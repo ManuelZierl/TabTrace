@@ -1,6 +1,6 @@
 const default_config = {
     track_last: 2,
-    colors: ["red", "yellow"], // todo: other way around?
+    colors: ["yellow", "red"], // todo: other way around?
     show_numbers: true // todo: use this
 }
 
@@ -12,13 +12,14 @@ chrome.tabs.onActivated.addListener(function(tab) {
     }, 500);
 });
 
-
-
 async function adjust_tabs(tab) {
+    let x = await chrome.tabs.query({});
+    console.log("==>", x)
     // todo: check if the tab is already in a group not handled by TabTrace: if so it should do nothing ...
     // todo: this should be clarified in the doc
     // todo: if a tab appears multiple times it should get the smaller number:
     // todo: if it is the active ine it should never be marked (is confusing)
+    // todo: doesnt work with multiple windows: every window should have its own trace
     last_n_tab_ids.unshift(tab.tabId)
     let outdated = last_n_tab_ids.slice(default_config.track_last + 1)
     last_n_tab_ids = last_n_tab_ids.slice(0, default_config.track_last + 1)

@@ -6,5 +6,8 @@
   "background": {
     "service_worker": "src/js/background.js"
   },
+  "action": {
+    "default_popup": "src/html/popup.html"
+  },
   "permissions": ["tabs", "tabGroups"]
 }
