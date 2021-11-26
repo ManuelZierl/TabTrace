@@ -9,5 +9,5 @@
   "action": {
     "default_popup": "src/html/popup.html"
   },
-  "permissions": ["tabs", "tabGroups"]
+  "permissions": ["tabs", "tabGroups", "storage"]
 }
