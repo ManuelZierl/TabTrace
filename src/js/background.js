@@ -4,7 +4,7 @@ let CONFIG = {
     track_last: 2, // the last how many should be shown
     backup_history: 10, // additianalliy soted to track_last: that are used in case tabs are closed
     colors: ["yellow", "red"], // todo: other way around?? or change down their
-    show_numbers: true  // todo: use this
+    show_numbers: false  // todo: use this
 }
 
 let TABS = {}
@@ -45,35 +45,57 @@ async function get_window(window_id) {
     return undefined
 }
 
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 // GET CONFIG
 
-chrome.storage.sync.get(["track_last", "colors", "show_numbers"], ({ track_last, colors, show_numbers }) => {
-    if (track_last != undefined) {
-        CONFIG.track_last = track_last
+chrome.storage.sync.get([
+    "TabTrace_track_last", 
+    "TabTrace_colors", 
+    "TabTrace_show_numbers",
+    "TabTrace_backup_history"
+], ({ TabTrace_track_last, TabTrace_colors, TabTrace_show_numbers, TabTrace_backup_history }) => {
+    if (TabTrace_track_last != undefined) {
+        CONFIG.track_last = TabTrace_track_last
     }
 
-    if (colors != undefined) {
-        CONFIG.colors = colors
+    if (TabTrace_colors != undefined) {
+        CONFIG.colors = TabTrace_colors
     }
 
-    if (show_numbers != undefined) {
-        CONFIG.show_numbers = show_numbers
+    if (TabTrace_show_numbers != undefined) {
+        CONFIG.show_numbers = TabTrace_show_numbers
+    }
+
+    if (TabTrace_backup_history != undefined) {
+        CONFIG.show_numbers = TabTrace_backup_history
     }
 });
 
 
-chrome.tabs.onActivated.addListener(function(tab) {
+
+
+chrome.tabs.onActivated.addListener(async (tab) => {
     // todo: can we set this down? Or can be do it in a safe way: in a loop that tries as long as it doen not throw an error?
     // todo: this is a bug: is there a nicer way to fix this?
-    setTimeout(() => { 
-        main_loop(tab)
-    }, 500); 
+    let success = false;
+    while (!success) {
+        try {
+            await delay(500)
+            await main_loop(tab)
+            success = true
+        }
+        catch (error) {
+            console.log("erro caught", error)
+        }
+    }
+
 });
 
 async function main_loop(active_tab) {
     await update_state(active_tab)
     await clear(active_tab.windowId)
-    await redraw(active_tab.windowId)
+    await redraw(active_tab.windowId, active_tab.tabId)
 }
 
 async function update_state(active_tab) {
@@ -122,20 +144,39 @@ async function update_state(active_tab) {
 }
 
 
-async function redraw(window_id) {
-    // for (let window_id in TABS) { 
-        // for first n that needs to be drawn ...
-    for (let i = 1; i < Math.min(TABS[window_id].tabs.length, CONFIG.track_last+1); i++) {
-        let tab_id = TABS[window_id].tabs[i]
+async function redraw(window_id, active_tab_id) {
+    let drawn = new Set()
+    let index = 1
+    while (drawn.size < CONFIG.track_last) {
+        if (index >= TABS[window_id].tabs.length) {
+            break;
+        }
+        let tab_id = TABS[window_id].tabs[index]
+        index += 1
         
+        if (tab_id == active_tab_id) {
+            continue; // dont draw active window
+        }
+
+        if (drawn.has(tab_id)) {
+            continue; // dont draw twice
+        }
+
+
         let group_id = await chrome.tabs.group({ tabIds: tab_id });
+
+        let title = ""
+        if (CONFIG.show_numbers) {
+            title = (drawn.size + 1).toString()
+        }
+
         await chrome.tabGroups.update(group_id, {
             collapsed: false,
-            title: i.toString(),
-            color: CONFIG.colors[i % CONFIG.colors.length] // todo: the other way around would be more intuitive
+            title: title,
+            color: CONFIG.colors[(drawn.size +1) % CONFIG.colors.length] // todo: the other way around would be more intuitive
         });
+        drawn.add(tab_id)
     }
-    // }
 }
 
 async function clear(window_id) {
@@ -180,4 +221,18 @@ async function reset_config() {
         colors: undefined,
         show_numbers: undefined,
     });    
-}                                                         
+}         
+
+
+
+// HANDLE STATE CHANGES
+chrome.storage.onChanged.addListener(({TabTrace_show_numbers}) => {
+    /// if key one of the TabTrace_ -> redraw everything
+    if (TabTrace_show_numbers) {
+        // todo: set TabTrace_show_numbers
+    }
+
+
+    // todo: redraw 
+    console.log("changed", changed)
+})

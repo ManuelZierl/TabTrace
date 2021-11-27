@@ -1,6 +1,6 @@
 {
   "name": "TabTrace",
-  "description": "todo:",
+  "description": "Visual indicator for your last visited tabs",
   "version": "0.0.1",
   "manifest_version": 3,
   "background": {
