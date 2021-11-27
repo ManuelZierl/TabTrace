@@ -1,13 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Page Title</title>
 </head>
 <body>
 
-<h1>todo:</h1>
-<!--todo: configuration comes here ...-->
-<input type="checkbox" id="showNumber" />
+<h1>TabTrace</h1>
+
+<table>
+<thead>
+    <tr>
+        <th><input type="radio" id="track_last_1" name="trackLast" value="1"></th>
+        <th><input type="radio" id="track_last_2" name="trackLast" value="2"></th>
+        <th><input type="radio" id="track_last_3" name="trackLast" value="3"></th>
+        <th><input type="radio" id="track_last_4" name="trackLast" value="4"></th>
+    </tr>
+</thead>
+<tbody>
+    <tr>
+        <td>1</td>
+        <td>2</td>
+        <td>3</td>
+        <td>4</td>
+    </tr>
+</tbody>
+</table>
+
+</br>
+</br>
+
+<table>
+<tbody>
+    <tr>
+        <td>
+            show numbers: 
+        </td>
+        <td>
+            <input type="checkbox" id="showNumber" />
+        </td>
+    </tr>
+</tbody>
+</table>
+
 <script src="../js/popup.js"></script>
+<style>
+    td {
+        text-align:center;
+    }
+    table {
+        margin-left: auto;
+        margin-right: auto;
+    }
+    body {
+        width: 200px; 
+        height: 200px; 
+        text-align: center; 
+        margin: 0 auto;
+    }
+</style>
 </body>
 </html>

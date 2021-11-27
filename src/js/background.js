@@ -3,8 +3,8 @@
 let CONFIG = {
     track_last: 2, // the last how many should be shown
     backup_history: 10, // additianalliy soted to track_last: that are used in case tabs are closed
-    colors: ["yellow", "red"], // todo: other way around?? or change down their
-    show_numbers: false  // todo: use this
+    colors: ["red",  "yellow", "blue", "pink"], // todo: other way around?? or change down their
+    show_numbers: true  // show the numbers?
 }
 
 let TABS = {}
@@ -38,7 +38,6 @@ async function get_tab(tab_id) {
 
 async function get_window(window_id) {
     try {
-        // console.log(typeof window_id)
         let window = await chrome.windows.get(parseInt(window_id));
         return window;
     } catch {}
@@ -85,9 +84,7 @@ chrome.tabs.onActivated.addListener(async (tab) => {
             await main_loop(tab)
             success = true
         }
-        catch (error) {
-            console.log("erro caught", error)
-        }
+        catch {}
     }
 
 });
@@ -107,7 +104,6 @@ async function update_state(active_tab) {
 
     for (let window_id in TABS) {
         let window = await get_window(window_id)
-        console.log("window", window)
         if (window == undefined) {
             // window doesnt exist any more
             delete TABS[window_id]
@@ -133,6 +129,7 @@ async function update_state(active_tab) {
         if (TABS[windowId].length > CONFIG.track_last + CONFIG.backup_history) {
             // needs to be trimmed
             TABS[windowId] = TABS[windowId].slice(0, CONFIG.track_last + CONFIG.backup_history)
+            // todo when we trimm: ungroup the rese
         }
         TABS[windowId].tabs.unshift(tabId)
     } else {
@@ -173,7 +170,7 @@ async function redraw(window_id, active_tab_id) {
         await chrome.tabGroups.update(group_id, {
             collapsed: false,
             title: title,
-            color: CONFIG.colors[(drawn.size +1) % CONFIG.colors.length] // todo: the other way around would be more intuitive
+            color: CONFIG.colors[drawn.size] // todo: the other way around would be more intuitive
         });
         drawn.add(tab_id)
     }
@@ -225,14 +222,18 @@ async function reset_config() {
 
 
 
-// HANDLE STATE CHANGES
-chrome.storage.onChanged.addListener(({TabTrace_show_numbers}) => {
-    /// if key one of the TabTrace_ -> redraw everything
+// HANDLE STATE UPDATES
+chrome.storage.onChanged.addListener(async ({TabTrace_show_numbers, TabTrace_track_last}) => {
     if (TabTrace_show_numbers) {
-        // todo: set TabTrace_show_numbers
+        CONFIG.show_numbers = TabTrace_show_numbers.newValue;
     }
 
+    if (TabTrace_track_last) {
+        CONFIG.track_last = TabTrace_track_last.newValue;
+    }
 
-    // todo: redraw 
-    console.log("changed", changed)
+    let [active_tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    await clear(active_tab.windowId)
+    await redraw(active_tab.windowId, active_tab.tabId)
 })
