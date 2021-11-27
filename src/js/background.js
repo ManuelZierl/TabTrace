@@ -22,6 +22,29 @@ async function filter(arr, callback) {
     ).filter(i => i !== fail)
 }
 
+
+async function get_tab(tab_id) {
+    /**
+     * todo: test
+     * todo: doc
+     */
+    try {
+        let tab = await chrome.tabs.get(tab_id);
+        return tab;
+    } catch {}
+    return undefined
+}
+
+
+async function get_window(window_id) {
+    try {
+        // console.log(typeof window_id)
+        let window = await chrome.windows.get(parseInt(window_id));
+        return window;
+    } catch {}
+    return undefined
+}
+
 // GET CONFIG
 
 chrome.storage.sync.get(["track_last", "colors", "show_numbers"], ({ track_last, colors, show_numbers }) => {
@@ -49,8 +72,8 @@ chrome.tabs.onActivated.addListener(function(tab) {
 
 async function main_loop(active_tab) {
     await update_state(active_tab)
-    await clear()
-    await redraw()
+    await clear(active_tab.windowId)
+    await redraw(active_tab.windowId)
 }
 
 async function update_state(active_tab) {
@@ -61,19 +84,27 @@ async function update_state(active_tab) {
     let {tabId, windowId} = active_tab;
 
     for (let window_id in TABS) {
-        TABS[window_id].tabs = await filter(TABS[window_id].tabs, async (tab_id) => {
-            let tab = await get_tab(tab_id)
-            if (tab != undefined) {
-                if (tab.windowId != window_id) {
-                    // is in other window now: ungroup and filter it
-                    await chrome.tabs.ungroup(tab_id);
-                    return false 
+        let window = await get_window(window_id)
+        console.log("window", window)
+        if (window == undefined) {
+            // window doesnt exist any more
+            delete TABS[window_id]
+        } else {
+            TABS[window_id].tabs = await filter(TABS[window_id].tabs, async (tab_id) => {
+                let tab = await get_tab(tab_id)
+                
+                if (tab != undefined) {
+                    if (tab.windowId != window_id) {
+                        // is in other window now: ungroup and filter it
+                        await chrome.tabs.ungroup(tab_id);
+                        return false 
+                    }
+                    return true // ok
+                } else {
+                    return false // was deleted
                 }
-                return true // ok
-            } else {
-                return false // was deleted
-            }
-        })
+            })
+        }
     }
 
     if (windowId in TABS) {
@@ -90,46 +121,30 @@ async function update_state(active_tab) {
     }
 }
 
-async function get_tab(tab_id) {
-    /**
-     * todo: test
-     * todo: doc
-     */
-    try {
-        let tab = await chrome.tabs.get(tab_id);
-        return tab;
-    } catch {}
-    return undefined
-}
 
-
-async function redraw() {
-    for (let window_id in TABS) { 
+async function redraw(window_id) {
+    // for (let window_id in TABS) { 
         // for first n that needs to be drawn ...
-        for (let i = 1; i < Math.min(TABS[window_id].tabs.length, CONFIG.track_last+1); i++) {
-            let tab_id = TABS[window_id].tabs[i]
-            
-            let group_id = await chrome.tabs.group({ tabIds: tab_id });
-            await chrome.tabGroups.update(group_id, {
-                collapsed: false,
-                title: i.toString(),
-                color: CONFIG.colors[i % CONFIG.colors.length] // todo: the other way around would be more intuitive
-            });
-        }
+    for (let i = 1; i < Math.min(TABS[window_id].tabs.length, CONFIG.track_last+1); i++) {
+        let tab_id = TABS[window_id].tabs[i]
+        
+        let group_id = await chrome.tabs.group({ tabIds: tab_id });
+        await chrome.tabGroups.update(group_id, {
+            collapsed: false,
+            title: i.toString(),
+            color: CONFIG.colors[i % CONFIG.colors.length] // todo: the other way around would be more intuitive
+        });
     }
+    // }
 }
 
-async function clear() {
+async function clear(window_id) {
     /**
      * todo: test
      * todo: doc
      */
-    
-    for (let window_id in TABS) { 
-        for (let tab_id of TABS[window_id].tabs) {
-            console.log("remove from group", tab_id)
-            await chrome.tabs.ungroup(tab_id);
-        }
+    for (let tab_id of TABS[window_id].tabs) {
+        await chrome.tabs.ungroup(tab_id);
     }
 }
 
